@@ -1,0 +1,8 @@
+#!/home2/samba/jelowickif/public/sop-rec-student
+[Desktop Entry]
+Name=FairPlay
+Comment=MINI FairPlay system
+Type=Application
+Exec=/home2/samba/jelowickif/public/sop-rec-student
+StartupNotify=false
+Terminal=true
