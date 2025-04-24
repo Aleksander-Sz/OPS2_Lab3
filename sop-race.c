@@ -31,6 +31,12 @@
         exit(EXIT_FAILURE);                             \
     } while (0)
 
+typedef struct sync_data_t
+{
+    pthread_barrier_t start_barrier;
+    pthread_barrierattr_t start_barrier_attr;
+} sync_data;
+
 void usage(char* program_name)
 {
     fprintf(stderr, "Usage: \n");
@@ -51,4 +57,69 @@ void msleep(unsigned int milli)
         ERR("nanosleep");
 }
 
-int main(int argc, char** argv) { usage(argv[0]); }
+void child_work(sync_data *shared_1)
+{
+    printf("I am the child %d\n",getpid());
+    srand(getpid());
+    pthread_barrier_wait(&shared_1->start_barrier);    
+    printf("%d waf waf (started race)\n",getpid());
+}
+
+void parent_work()
+{
+    printf("I am the parent %d\n",getpid());
+}
+
+int main(int argc, char** argv)
+{
+    if(argc!=3)
+    {
+        usage(argv[0]);
+        return 0;
+    }
+    int L = atoi(argv[1]);
+    int N = atoi(argv[2]);
+    if(L<16||L>256||N<2||N>6)
+    {
+        usage(argv[0]);
+        return 0;
+    }
+
+    // creating the shared memory region:
+    sync_data *shared_1 = (sync_data*)mmap(NULL,sizeof(sync_data),PROT_WRITE|PROT_READ,MAP_ANONYMOUS|MAP_SHARED,-1,0);
+    
+    pthread_barrierattr_init(&shared_1->start_barrier_attr);
+    pthread_barrierattr_setpshared(&shared_1->start_barrier_attr, PTHREAD_PROCESS_SHARED);
+    pthread_barrier_init(&shared_1->start_barrier,&shared_1->start_barrier_attr,N);
+    // creating processes:
+
+    int res;
+    for(int i = 0; i<N; i++)
+    {
+        res = fork();
+        if(res==-1)
+            ERR("Error forking.\n");
+        if(res==0)
+        {
+            // I am a child
+            child_work(shared_1);
+            exit(EXIT_SUCCESS);
+        }
+        else
+        {
+            // I am a parent
+            //parent_work();
+        }
+    }
+
+    for(int i = 0; i<N; i++)
+    {
+        wait(NULL);
+    }
+    printf("Children closed\n");
+    //msleep(1000);
+    //disposing of structures
+    pthread_barrier_destroy(&shared_1->start_barrier);
+    pthread_barrierattr_destroy(&shared_1->start_barrier_attr);
+    munmap(shared_1, sizeof(sync_data));
+}
