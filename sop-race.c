@@ -76,6 +76,7 @@ void child_work(sync_data* shared_1)
     int L = shared_1->racetrack_lenght;
     pid_t* racetrack = shared_1->racetrack;
     pthread_mutex_t* racetrack_mutex = shared_1->racetrack_mutex;
+    int move_count = 0;
     while (1)
     {
         msleep(rand() % 1001 + 250);
@@ -84,13 +85,18 @@ void child_work(sync_data* shared_1)
         if (new_pos >= L)
         {
             // change direction
-            // pthread_mutex_lock(&racetrack_mutex[position]);
-            // racetrack[position] = 0;
+            pthread_mutex_lock(&racetrack_mutex[position]);
+            racetrack[position] = 0;
+            pthread_mutex_unlock(&racetrack_mutex[position]);
             direction = -1;
-            // pthread_mutex_unlock(&racetrack_mutex[position]);
+            position = L - 1;
+            pthread_mutex_lock(&racetrack_mutex[position]);
+            racetrack[position] = my_pid;
+            shared_1->direction[position] = direction;
+            pthread_mutex_unlock(&racetrack_mutex[position]);
             printf("%d waf waf (changed direction))\n", my_pid);
         }
-        else if (new_pos < 0)
+        else if (new_pos <= 0 && move_count > 1)
         {
             pthread_mutex_lock(&racetrack_mutex[position]);
             racetrack[position] = 0;
@@ -119,6 +125,7 @@ void child_work(sync_data* shared_1)
         {
             printf("%d waf waf (the field is occupied)\n", my_pid);
         }
+        move_count++;
     }
 }
 
@@ -130,32 +137,41 @@ void commentator(sync_data* shared_1)
     int* direction = shared_1->direction;
     int local_direction[shared_1->racetrack_lenght];
     pid_t local_pid[shared_1->racetrack_lenght];
-    for (int i = 0; i < shared_1->racetrack_lenght; i++)
+    int dogs_count;
+    do
     {
-        pthread_mutex_lock(&racetrack_mutex[i]);
-        local_pid[i] = racetrack[i];
-        local_direction[i] = direction[i];
-        pthread_mutex_unlock(&racetrack_mutex[i]);
-    }
-    for (int i = 0; i < shared_1->racetrack_lenght; i++)
-    {
-        if (local_pid[i] != 0)
+        msleep(1000);
+        for (int i = 0; i < shared_1->racetrack_lenght; i++)
         {
-            printf("%d", local_pid[i]);
-            if (local_direction[i] == 1)
+            pthread_mutex_lock(&racetrack_mutex[i]);
+            local_pid[i] = racetrack[i];
+            local_direction[i] = direction[i];
+            pthread_mutex_unlock(&racetrack_mutex[i]);
+        }
+        dogs_count = 0;
+        for (int i = 0; i < shared_1->racetrack_lenght; i++)
+        {
+            if (local_pid[i] != 0)
             {
-                printf("> ");
+                printf("%d", local_pid[i]);
+                if (local_direction[i] == 1)
+                {
+                    printf("> ");
+                }
+                else
+                {
+                    printf("< ");
+                }
+                dogs_count++;
             }
             else
             {
-                printf("< ");
+                printf("--- ");
             }
         }
-        else
-        {
-            printf("--- ");
-        }
+        printf("\n");
     }
+    while(dogs_count>0);
 }
 
 void parent_work() { printf("I am the parent %d\n", getpid()); }
