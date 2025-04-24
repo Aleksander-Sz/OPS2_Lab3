@@ -89,7 +89,6 @@ void child_work(sync_data* shared_1)
             direction = -1;
             // pthread_mutex_unlock(&racetrack_mutex[position]);
             printf("%d waf waf (changed direction))\n", my_pid);
-            return;
         }
         else if (new_pos < 0)
         {
@@ -129,13 +128,21 @@ void commentator(sync_data* shared_1)
     pid_t* racetrack = shared_1->racetrack;
     pthread_mutex_t* racetrack_mutex = shared_1->racetrack_mutex;
     int* direction = shared_1->direction;
+    int local_direction[shared_1->racetrack_lenght];
+    pid_t local_pid[shared_1->racetrack_lenght];
     for (int i = 0; i < shared_1->racetrack_lenght; i++)
     {
         pthread_mutex_lock(&racetrack_mutex[i]);
-        if (racetrack[i] != 0)
+        local_pid[i] = racetrack[i];
+        local_direction[i] = direction[i];
+        pthread_mutex_unlock(&racetrack_mutex[i]);
+    }
+    for (int i = 0; i < shared_1->racetrack_lenght; i++)
+    {
+        if (local_pid[i] != 0)
         {
-            printf("%d", racetrack[i]);
-            if (direction[i] == 1)
+            printf("%d", local_pid[i]);
+            if (local_direction[i] == 1)
             {
                 printf("> ");
             }
@@ -144,7 +151,10 @@ void commentator(sync_data* shared_1)
                 printf("< ");
             }
         }
-        pthread_mutex_unlock(&racetrack_mutex[i]);
+        else
+        {
+            printf("--- ");
+        }
     }
 }
 
