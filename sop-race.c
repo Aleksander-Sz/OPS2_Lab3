@@ -170,8 +170,7 @@ void commentator(sync_data* shared_1)
             }
         }
         printf("\n");
-    }
-    while(dogs_count>0);
+    } while (dogs_count > 0);
 }
 
 void parent_work() { printf("I am the parent %d\n", getpid()); }
