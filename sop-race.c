@@ -82,6 +82,9 @@ void child_work(sync_data* shared_1)
         int new_pos = position + (direction * movement);
         if (new_pos >= L)
         {
+            pthread_mutex_lock(&racetrack_mutex[position]);
+            racetrack[position] = 0;
+            pthread_mutex_unlock(&racetrack_mutex[position]);
             printf("%d waf waf (finished race)\n", my_pid);
             return;
         }
