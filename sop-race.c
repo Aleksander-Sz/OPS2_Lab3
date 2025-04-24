@@ -112,7 +112,7 @@ void child_work(sync_data* shared_1)
                 // pthread_mutex_lock(&racetrack_mutex[position]);
                 racetrack[new_pos] = my_pid;
                 shared_1->direction[new_pos] = direction;
-                pthread_mutex_unlock(&racetrack_mutex[position]);
+                pthread_mutex_unlock(&racetrack_mutex[new_pos]);
                 if (position > 0)
                 {
                     pthread_mutex_lock(&racetrack_mutex[position]);
