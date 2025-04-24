@@ -106,27 +106,27 @@ void child_work(sync_data* shared_1)
         }
         else
         {
-            pthread_mutex_lock(&racetrack_mutex[position]);
+            pthread_mutex_lock(&racetrack_mutex[new_pos]);
             if (racetrack[new_pos] == 0)
             {
+                // pthread_mutex_lock(&racetrack_mutex[position]);
+                racetrack[new_pos] = my_pid;
+                shared_1->direction[new_pos] = direction;
+                pthread_mutex_unlock(&racetrack_mutex[position]);
                 if (position > 0)
                 {
-                    // pthread_mutex_lock(&racetrack_mutex[position]);
+                    pthread_mutex_lock(&racetrack_mutex[position]);
                     racetrack[position] = 0;
                     pthread_mutex_unlock(&racetrack_mutex[position]);
                 }
                 // pthread_mutex_lock(&racetrack_mutex[220]);
                 // pthread_mutex_unlock(&racetrack_mutex[220]);
                 position = new_pos;
-                pthread_mutex_lock(&racetrack_mutex[position]);
-                racetrack[position] = my_pid;
-                shared_1->direction[position] = direction;
-                pthread_mutex_unlock(&racetrack_mutex[position]);
                 printf("%d waf waf (new position = %d)\n", my_pid, position);
             }
             else
             {
-                pthread_mutex_unlock(&racetrack_mutex[position]);
+                pthread_mutex_unlock(&racetrack_mutex[new_pos]);
                 printf("%d waf waf (the field is occupied)\n", my_pid);
             }
         }
