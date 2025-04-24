@@ -35,6 +35,7 @@ typedef struct sync_data_t
 {
     pthread_barrier_t start_barrier;
     pthread_barrierattr_t start_barrier_attr;
+    pid_t* racetrack;
 } sync_data;
 
 void usage(char* program_name)
@@ -89,6 +90,8 @@ int main(int argc, char** argv)
     pthread_barrierattr_init(&shared_1->start_barrier_attr);
     pthread_barrierattr_setpshared(&shared_1->start_barrier_attr, PTHREAD_PROCESS_SHARED);
     pthread_barrier_init(&shared_1->start_barrier, &shared_1->start_barrier_attr, N);
+
+    shared_1->racetrack = mmap(NULL, sizeof(pid_t) * L, PROT_WRITE | PROT_READ, MAP_ANONYMOUS | MAP_SHARED, -1, 0);
     // creating processes:
 
     int res;
@@ -101,7 +104,8 @@ int main(int argc, char** argv)
         {
             // I am a child
             child_work(shared_1);
-            exit(EXIT_SUCCESS);
+            // exit(EXIT_SUCCESS);
+            break;
         }
         else
         {
@@ -109,15 +113,18 @@ int main(int argc, char** argv)
             // parent_work();
         }
     }
-
-    for (int i = 0; i < N; i++)
+    if (res > 0)
     {
-        wait(NULL);
+        for (int i = 0; i < N; i++)
+        {
+            wait(NULL);
+        }
+        // disposing of structures
+        printf("Children closed\n");
+        pthread_barrier_destroy(&shared_1->start_barrier);
+        pthread_barrierattr_destroy(&shared_1->start_barrier_attr);
+        munmap(shared_1->racetrack, sizeof(pid_t) * L);
+        munmap(shared_1, sizeof(sync_data));
     }
-    printf("Children closed\n");
     // msleep(1000);
-    // disposing of structures
-    pthread_barrier_destroy(&shared_1->start_barrier);
-    pthread_barrierattr_destroy(&shared_1->start_barrier_attr);
-    munmap(shared_1, sizeof(sync_data));
 }
