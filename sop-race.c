@@ -38,6 +38,7 @@ typedef struct sync_data_t
     pid_t* racetrack;
     int racetrack_lenght;
     pthread_mutex_t* racetrack_mutex;
+    int* direction;
 } sync_data;
 
 void usage(char* program_name)
@@ -82,10 +83,20 @@ void child_work(sync_data* shared_1)
         int new_pos = position + (direction * movement);
         if (new_pos >= L)
         {
+            // change direction
+            // pthread_mutex_lock(&racetrack_mutex[position]);
+            // racetrack[position] = 0;
+            direction = -1;
+            // pthread_mutex_unlock(&racetrack_mutex[position]);
+            printf("%d waf waf (changed direction))\n", my_pid);
+            return;
+        }
+        else if (new_pos < 0)
+        {
             pthread_mutex_lock(&racetrack_mutex[position]);
             racetrack[position] = 0;
             pthread_mutex_unlock(&racetrack_mutex[position]);
-            printf("%d waf waf (finished race)\n", my_pid);
+            printf("%d waf waf (finished race))\n", my_pid);
             return;
         }
         else if (racetrack[new_pos] == 0)
@@ -101,6 +112,7 @@ void child_work(sync_data* shared_1)
             position = new_pos;
             pthread_mutex_lock(&racetrack_mutex[position]);
             racetrack[position] = my_pid;
+            shared_1->direction[position] = direction;
             pthread_mutex_unlock(&racetrack_mutex[position]);
             printf("%d waf waf (new position = %d)\n", my_pid, position);
         }
@@ -108,6 +120,31 @@ void child_work(sync_data* shared_1)
         {
             printf("%d waf waf (the field is occupied)\n", my_pid);
         }
+    }
+}
+
+void commentator(sync_data* shared_1)
+{
+    printf("I am the commentator %d\n", getpid());
+    pid_t* racetrack = shared_1->racetrack;
+    pthread_mutex_t* racetrack_mutex = shared_1->racetrack_mutex;
+    int* direction = shared_1->direction;
+    for (int i = 0; i < shared_1->racetrack_lenght; i++)
+    {
+        pthread_mutex_lock(&racetrack_mutex[i]);
+        if (racetrack[i] != 0)
+        {
+            printf("%d", racetrack[i]);
+            if (direction[i] == 1)
+            {
+                printf("> ");
+            }
+            else
+            {
+                printf("< ");
+            }
+        }
+        pthread_mutex_unlock(&racetrack_mutex[i]);
     }
 }
 
@@ -139,6 +176,7 @@ int main(int argc, char** argv)
     shared_1->racetrack = mmap(NULL, sizeof(pid_t) * L, PROT_WRITE | PROT_READ, MAP_ANONYMOUS | MAP_SHARED, -1, 0);
     shared_1->racetrack_mutex =
         mmap(NULL, sizeof(pthread_mutex_t) * L, PROT_WRITE | PROT_READ, MAP_ANONYMOUS | MAP_SHARED, -1, 0);
+    shared_1->direction = mmap(NULL, sizeof(int) * L, PROT_WRITE | PROT_READ, MAP_ANONYMOUS | MAP_SHARED, -1, 0);
     pthread_mutexattr_t attr;
     pthread_mutexattr_init(&attr);
     pthread_mutexattr_setpshared(&attr, PTHREAD_PROCESS_SHARED);
@@ -146,6 +184,7 @@ int main(int argc, char** argv)
     {
         shared_1->racetrack[i] = 0;
         pthread_mutex_init(&shared_1->racetrack_mutex[i], &attr);
+        shared_1->direction[i] = 0;
     }
     pthread_mutexattr_destroy(&attr);
     // pthread_mutex_lock(&shared_1->racetrack_mutex[5]);
@@ -174,12 +213,23 @@ int main(int argc, char** argv)
     }
     if (res > 0)
     {
-        for (int i = 0; i < N; i++)
+        // I am a parent
+        if (fork() == 0)
         {
-            wait(NULL);
+            // I am a child
+            commentator(shared_1);
         }
-        // disposing of structures
-        printf("Children closed\n");
+        else
+        {
+            // I am a parent
+            ;
+            for (int i = 0; i < N + 1; i++)
+            {
+                wait(NULL);
+            }
+            // disposing of structures
+            printf("Children closed\n");
+        }
     }
     for (int i = 0; i < L; i++)
     {
@@ -189,6 +239,7 @@ int main(int argc, char** argv)
     pthread_barrierattr_destroy(&shared_1->start_barrier_attr);
     munmap(shared_1->racetrack, sizeof(pid_t) * L);
     munmap(shared_1->racetrack_mutex, sizeof(pthread_mutex_t) * L);
+    munmap(shared_1->direction, sizeof(int) * L);
     munmap(shared_1, sizeof(sync_data));
     // msleep(1000);
 }
