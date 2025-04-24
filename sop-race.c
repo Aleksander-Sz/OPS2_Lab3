@@ -121,10 +121,10 @@ int main(int argc, char** argv)
         }
         // disposing of structures
         printf("Children closed\n");
-        pthread_barrier_destroy(&shared_1->start_barrier);
-        pthread_barrierattr_destroy(&shared_1->start_barrier_attr);
-        munmap(shared_1->racetrack, sizeof(pid_t) * L);
-        munmap(shared_1, sizeof(sync_data));
     }
+    pthread_barrier_destroy(&shared_1->start_barrier);
+    pthread_barrierattr_destroy(&shared_1->start_barrier_attr);
+    munmap(shared_1->racetrack, sizeof(pid_t) * L);
+    munmap(shared_1, sizeof(sync_data));
     // msleep(1000);
 }
